@@ -1,91 +1,62 @@
 # Session Handoff — 2026-04-28
 
-## Repos in scope
-- `lychan110/contact-scout` — React + Vite, GitHub Pages deployment
-- `lychan110/rsvp-automation` — Vanilla JS HTML apps, GitHub Pages on `master`
+## Session summary
+Full environment setup session: fixed the empty contact-scout GitHub Pages deployment, audited and improved accessibility across both repos, installed and persisted plugins/MCPs in the cloud env, and built a cross-environment handoff system using episodic-memory + git-backed HANDOFF.md. Both repos are clean on their default branches with no open PRs.
 
----
+## Repos touched
+- `contact-scout`: CLAUDE.md UI/UX section (PR #1, merged); empty site fix + a11y audit (PR #2, merged); `docs/HANDOFF.md` added to main
+- `rsvp-automation`: CLAUDE.md UI/UX section (PR #18, merged)
 
-## What was done this session
+## Decisions made
+- **`base: './'` over `base: '/contact-scout/'`**: relative asset paths work for both GitHub Pages subpath and local serving without env-specific builds
+- **`#8b949e` as standard muted text color**: replaces `#6e7681` everywhere — lifts contrast from 4.36:1 to 6.42:1 (WCAG AA threshold is 4.5:1)
+- **episodic-memory via plugin system, not npm**: npm global install fails in sandbox (native `better-sqlite3`); plugin cache at `/root/.claude/plugins/cache/superpowers-marketplace/episodic-memory/1.0.15/`
+- **jcodemunch-mcp via pip** (`/usr/local/bin/jcodemunch-mcp`): pure Python, no native compilation — binary may not survive container rebuilds; SessionStart hook reinstalls if missing
+- **Handoff via git-backed HANDOFF.md**: mem0 and superpowers marketplace lack viable cross-env shared memory; git-backed pull at SessionStart is the working solution
+- **`~/.claude/CLAUDE.md` not synced**: does not exist in this sandbox; create here or add to SessionStart hook pull
 
-### 1. CLAUDE.md improvements (both repos, merged)
-Both repos received a new **UI/UX Development Approach** section:
-- Agile iteration rules (one interaction per commit, promote to prod file on approval)
-- UX principles table (empty states, inline feedback, destructive confirmations, outcome labels, visible progress)
-- Responsive layout guidelines (max-width containers, overflow-x scroll on tables, test at 1440/900 px)
-- Dark theme consistency rules (reuse existing colors, require :hover/:focus states)
-
-PRs merged: `contact-scout#1`, `rsvp-automation#18`
-
-### 2. contact-scout: empty deployed site + accessibility audit (merged)
-**Root cause of empty site:** `.github/workflows/static.yml` was uploading the raw repo
-(including uncompiled `.tsx` source) instead of building first.
-
-**Fixes applied** (all in `contact-scout` PR #2, merged to `main`):
-
-| File | Change |
-|------|---------|
-| `.github/workflows/static.yml` | Added `npm ci` + `npm run build` steps; changed upload path from `'.'` to `'./dist'` |
-| `vite.config.ts` | Added `base: './'` so asset URLs are relative and resolve under GitHub Pages subpath |
-| `index.html` + `App.tsx` | `height: 100vh` → `height: 100dvh` (mobile browser toolbar fix) |
-| `src/App.tsx` | `#6e7681` → `#8b949e` everywhere (contrast 4.36:1 → 6.42:1, WCAG AA pass) |
-| `src/App.tsx` | `#2d3340` → `#7d8590` for old log entries (was 1.88:1, now 5.86:1) |
-| `src/App.tsx` | Hint text `#21262d` → `#8b949e` (was invisible, 1.33:1) |
-| `src/App.tsx` | Status badge font 8px → 10px |
-| `src/App.tsx` | Removed `outline: none` from inputs; added `*:focus-visible` ring |
-
-**Deployed at:** `https://lychan110.github.io/contact-scout/`  
-Password: `scout2025`
-
----
-
-## Current state of both repos
+## Current state
 
 ### contact-scout
-- `main` is clean and fully deployed
-- No open PRs
+- Branch: main (clean)
+- Deployed: https://lychan110.github.io/contact-scout/ (working — PR #2 triggered fixed build pipeline)
+- Open PRs: none
+- Known issues: `SCAN_PROMPTS` in `src/App.tsx` lines 21-27 still contain placeholders (`[YOUR STATE]`, `[YOUR COUNTIES]`, `[CITY 1]`, `[CITY 2]`, `[CITY 3]`) — app shows warning banner until replaced
 
 ### rsvp-automation
-- `master` is clean (merged CLAUDE.md improvements)
-- No open PRs
-- No build step — raw HTML files, deployed as-is
-
----
+- Branch: master (clean)
+- Open PRs: none
+- Known issues: Nothing to note.
 
 ## Outstanding / next steps
+- [ ] **Customize scan prompts** — `src/App.tsx` lines 21-27, replace all bracketed placeholders in `SCAN_PROMPTS`
+- [ ] **Responsive log panel** — `src/App.tsx` line 529: `gridTemplateColumns: '1fr 220px'` breaks at narrow viewports; collapse log panel on mobile
+- [ ] **Local machine hooks** — copy-paste instructions provided in session; files needed: `~/.claude/hooks/session-stop-handoff.sh`, `~/.claude/hooks/session-start-handoff.sh`, `~/.claude/skills/handoff/SKILL.md`, merge hook entries into `~/.claude/settings.json`
+- [ ] **Sync `~/.claude/CLAUDE.md`** — does not exist in cloud env; add pull step to `session-start-handoff.sh` or create manually
+- [ ] **Update model string** — `claude-sonnet-4-20250514` hardcoded at `src/App.tsx` line 218; update when newer Sonnet releases
+- [ ] **rsvp-automation**: review `docs/ROADMAP.md`, `docs/PROGRESS.md`, `docs/TASKS.md` for queued UX work
 
-### contact-scout
-- [ ] **Customize scan prompts** — `src/App.tsx` `SCAN_PROMPTS` still has placeholders (`[YOUR STATE]`, `[YOUR COUNTIES]`, `[CITY 1-3]`). The app shows a warning banner until these are replaced.
-- [ ] **Phone preview** — tunnel services are blocked by the environment's network allowlist. Test on phone via the live GitHub Pages URL instead.
-- [ ] **Model version** — currently hardcoded to `claude-sonnet-4-20250514`. Update if a newer Sonnet model is released.
-- [ ] **Responsive audit** — fixed two-column grid (`1fr 220px`) stacks awkwardly at narrow viewports. Consider collapsing the log panel on mobile.
-
-### rsvp-automation
-- [ ] Review `docs/ROADMAP.md`, `docs/PROGRESS.md`, `docs/TASKS.md` for queued UX work
-- [ ] Keep planning docs in sync with CLAUDE.md when doing UI work
-
----
-
-## Key conventions
+## Key conventions (as of this session)
 
 **contact-scout (React + Vite):**
 - Inline styles throughout — no CSS modules or Tailwind
-- Dark GitHub-style palette; primary accent `#1f6feb`, text `#f0f6fc`, muted `#8b949e`
-- `saveState()` via `useEffect` on every state change
-- API key in `sessionStorage` only (never localStorage), key `cs_api_key`
-- Model: `claude-sonnet-4-20250514` with `web_search_20250305` tool
-- Dev: `npm run dev` on port 5174; build: `npm run build` → `dist/`
+- Palette: bg `#080c10`, cards `#0d1117`, text `#f0f6fc`, muted `#8b949e`, accent `#1f6feb`, green `#238636`, red `#da3633`
+- `saveState()` via `useEffect` watching `officials, newOfficials, scanStatus, scanMeta`
+- API key: `sessionStorage` key `cs_api_key` — never localStorage
+- Model: `claude-sonnet-4-20250514` + `web_search_20250305` tool
+- Build: `npm run build` → `dist/`; dev port 5174; GitHub Pages served from `dist/` via workflow
 
 **rsvp-automation (vanilla JS):**
-- Single `<script>` block per file, state at top, `render()` on every mutation
-- No frameworks, no imports, no fetch except Claude API + Google APIs
-- Google OAuth via GSI CDN — never hardcode API keys
-- Tab index changes must update TABS array, render() switch, onclick, and render checks together
-- Production files: `inviteflow.html`, `contactscout.html` — version files use `_v{N:02d}.html`
+- Single `<script>` block, state `S` at top, `render()` on every mutation, `saveState()` at end of `render()`
+- Tab index changes require updating: TABS array, `render()` switch, all `onclick="S.tab=N"`, all `if (S.tab===N)` checks
+- Production files: `inviteflow.html`, `contactscout.html` — versioned copies use `_v{N:02d}.html`
+- Google OAuth via GSI CDN — never hardcode API keys or client IDs in source
 
----
-
-## Environment notes
-- Node 22, npm 10 at `/opt/node22`
-- Network allowlist blocks tunnel services — phone preview must use the live GitHub Pages URL
-- `obra/episodic-memory` cannot be installed in the sandbox (native `better-sqlite3` addon fails); install locally with `npm install -g github:obra/episodic-memory` and register with `claude mcp add episodic-memory episodic-memory-mcp-server`
+## Environment notes (cloud sandbox)
+- Node 22 at `/opt/node22`; Python 3.11; git remote is local proxy at `127.0.0.1:33087`
+- Network allowlist blocks all tunnel services — use live GitHub Pages URL for phone testing
+- Plugins persisted in `~/.claude/` (survive sessions); pip/npm global installs at `/usr/local/` may not survive container rebuild
+- Installed plugins: `superpowers@superpowers-marketplace` v5.0.7, `episodic-memory@superpowers-marketplace` v1.0.15
+- Installed MCP: `jcodemunch-mcp` (stdio, user scope); SessionStart hook reinstalls binary if missing
+- Hooks: `~/.claude/hooks/session-stop-handoff.sh` (Stop), `~/.claude/hooks/session-start-handoff.sh` (SessionStart)
+- Skill: `/handoff` at `~/.claude/skills/handoff/SKILL.md`
